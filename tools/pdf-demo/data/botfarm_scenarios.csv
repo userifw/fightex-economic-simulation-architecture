@@ -1,0 +1,4 @@
+scenario,cost,realized_value,liquidation_adjusted_value,theoretical_value
+Route A: buy on market,100,82,202.1,297
+Route B: packs + craft,100,118,232.3,278
+Route C: referral-style entry,100,64,160.9,184

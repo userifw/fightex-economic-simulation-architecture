@@ -2,7 +2,7 @@
 
 **Economic simulation, multi-account modeling, market liquidity and reproducible audit evidence.**
 
-This is the public, non-confidential companion to the three-page English PDF case study. It documents verified architectural decisions from the private implementation without disclosing source code, customer-specific parameters or financial audit results.
+This is the public, non-confidential companion to the seven-page English PDF case study ([FIGHTEX_Architecture_Case_Study_EN.pdf](FIGHTEX_Architecture_Case_Study_EN.pdf)). It documents verified architectural decisions from the private implementation without disclosing source code, customer-specific parameters or financial audit results.
 
 ## Shared economy for organic and multi-account actors
 
@@ -34,6 +34,6 @@ The source implementation uses named seeded NumPy random streams, parameter hash
 
 ## PDF
 
-The matching three-page PDF is available as `FIGHTEX_Architecture_Case_Study_EN.pdf` for inclusion in the repository's `docs/` directory. It is not yet stored in this GitHub repository.
+The seven-page PDF [`FIGHTEX_Architecture_Case_Study_EN.pdf`](FIGHTEX_Architecture_Case_Study_EN.pdf) contains architecture diagrams and charts for multi-account simulation, marketplace liquidity, bot-farm valuation lenses with liquidation sensitivity, financial modeling, one-factor sensitivity analysis and reproducibility. **Every chart is built from synthetic data and labelled as such**; none of them shows FIGHTEX audit results or customer parameters. The generator and the synthetic data are in [`tools/pdf-demo/`](../tools/pdf-demo/).
 
 [Architecture overview](../README.md) · [Engine architecture](ENGINE.md) · [MCP integration](MCP.md) · [Reproducibility](REPRODUCIBILITY.md)

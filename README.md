@@ -37,6 +37,7 @@ flowchart TD
 - [Simulation engine](docs/ENGINE.md) — computation layers, daily model lifecycle, financial and tournament modules.
 - [MCP integration](docs/MCP.md) — AI client integration, authorization, read-only operation and deployment boundaries.
 - [Reproducibility](docs/REPRODUCIBILITY.md) — immutable snapshots, run digests, audit evidence and scenario uncertainty.
+- [Engineering case study (PDF, 7 pages)](docs/FIGHTEX_Architecture_Case_Study_EN.pdf) — architecture diagrams plus illustrative charts on multi-account simulation, marketplace liquidity, liquidation sensitivity, financial modeling, sensitivity analysis and reproducibility. All charts use synthetic data; the generator is in [`tools/pdf-demo/`](tools/pdf-demo/).
 
 ## Core components
 
