@@ -32,6 +32,12 @@ flowchart TD
 
 **Core design rule:** the calculation engine is independent of the user interface, MCP transport, and database. The dashboard, CLI, and MCP integrations share one application service and simulation runner; the AI assistant interprets results rather than calculating the economics itself.
 
+## Detailed architecture documentation
+
+- [Simulation engine](docs/ENGINE.md) — computation layers, daily model lifecycle, financial and tournament modules.
+- [MCP integration](docs/MCP.md) — AI client integration, authorization, read-only operation and deployment boundaries.
+- [Reproducibility](docs/REPRODUCIBILITY.md) — immutable snapshots, run digests, audit evidence and scenario uncertainty.
+
 ## Core components
 
 | Layer | Responsibility |
