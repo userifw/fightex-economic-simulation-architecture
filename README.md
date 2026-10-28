@@ -1,120 +1,87 @@
-# FIGHTEX — Economic Simulation & Tokenomics Architecture
+# FIGHTEX — Economic Simulation Platform
 
-**Python simulation engine · Game economy modeling · Monte Carlo · Financial risk analysis · MCP integration**
+**Python · Agent-based simulation · Monte Carlo · Financial risk modeling · MCP · Docker**
 
-FIGHTEX is an economic simulation architecture for a fantasy MMA/UFC-style digital collectible game. It models interactions between player behavior, virtual cards, staking rewards, crafting, marketplace trading, tournament payouts, and platform finances.
+FIGHTEX is a Python-based simulation platform for analyzing the economy of a digital collectible game. It models player activity, card lifecycles, staking rewards, crafting, marketplace transactions, tournament payouts, cash flow, and platform liquidity.
 
-This repository is a **public, high-level architecture overview**. It intentionally excludes the proprietary simulation source code, customer datasets, complete parameter sets, detailed audit findings, infrastructure credentials, and production configuration.
+This is a **public engineering case study**, not the proprietary source repository. It explains the system's design, verification approach, and AI integration without exposing customer parameters, financial results, audit artifacts, credentials, or deployment details.
 
-## Architecture at a glance
+## Engineering highlights
+
+- **One calculation engine, multiple interfaces.** Streamlit, CLI, and MCP use a shared application service rather than duplicating economic formulas.
+- **Deterministic evidence.** Versioned configurations, seeded runs, immutable snapshots, result digests, and reconciliation checks support reproducibility.
+- **Resource-aware execution.** Preflight estimation and execution limits protect expensive simulations.
+- **Role-scoped MCP.** Server-side authorization distinguishes administrator access from customer-safe aggregate views.
+- **Verified read-only reporting.** Approved result files are checked against a pinned integrity manifest and read without invoking the simulation engine.
+- **Isolated deployment.** Docker volumes separate calculation generations; audit imports preserve historical engine provenance.
+
+## Architecture
+
+### Calculation pipeline
 
 ```mermaid
-flowchart TD
-    UI["Streamlit dashboard"] --> CTRL["Dashboard controller"]
-    CLI["Command-line interface"] --> SVC["SimulatorService"]
-    MCP["MCP clients / AI assistants"] --> GW["Access gateway"]
-    CTRL --> SVC
-    GW --> SVC
-    SVC --> CFG["Validated scenario configuration"]
-    SVC --> LIMITS["Resource limits & preflight"]
-    SVC --> STORE[("SQLite: scenarios, snapshots, run ledger")]
-    SVC --> RUN["Simulation runner"]
-    RUN --> ECON["Daily player & card economy"]
-    RUN --> TOUR["Tournament / Monte Carlo"]
-    RUN --> FARM["Bot-farm analysis"]
-    RUN --> FIN["Financial modeling"]
-    ECON --> FIN
-    RUN --> CHECKS["Reconciliation & invariants"]
-    RUN --> OUTPUT["Structured results & findings"]
-    OUTPUT --> SVC
-    SVC --> EXPORT["JSON / CSV / XLSX exports"]
+flowchart LR
+  UI["CLI / Streamlit / authorized MCP"] --> SVC["SimulatorService"]
+  SVC --> CFG["Validated baseline + overrides"]
+  CFG --> LIMITS["Resource preflight"]
+  LIMITS --> RUN["Seeded simulation"]
+  RUN --> CHECKS["Economic reconciliation"]
+  CHECKS --> EVIDENCE["Snapshots + run ledger + digests"]
+  EVIDENCE --> REPORT["Structured analysis / exports"]
 ```
 
-**Core design rule:** the calculation engine is independent of the user interface, MCP transport, and database. The dashboard, CLI, and MCP integrations share one application service and simulation runner; the AI assistant interprets results rather than calculating the economics itself.
+### Approved-results pipeline (no simulation)
 
-## Detailed architecture documentation
+```mermaid
+flowchart LR
+  CLIENT["MCP client"] --> AUTH["Authentication + role policy"]
+  AUTH --> GATE["Access gateway"]
+  GATE --> VERIFY["Pinned-manifest integrity verification"]
+  FILES[("Read-only approved result files")] --> VERIFY
+  VERIFY --> VIEW["Role-specific response builder"]
+  VIEW --> CLIENT
+```
 
-- [Simulation engine](docs/ENGINE.md) — computation layers, daily model lifecycle, financial and tournament modules.
-- [MCP integration](docs/MCP.md) — AI client integration, authorization, read-only operation and deployment boundaries.
-- [Reproducibility](docs/REPRODUCIBILITY.md) — immutable snapshots, run digests, audit evidence and scenario uncertainty.
-- [Engineering case study (PDF, 7 pages)](docs/FIGHTEX_Architecture_Case_Study_EN.pdf) — architecture diagrams plus illustrative charts on multi-account simulation, marketplace liquidity, liquidation sensitivity, financial modeling, sensitivity analysis and reproducibility. All charts use synthetic data; the generator is in [`tools/pdf-demo/`](tools/pdf-demo/).
+The approved-results path does not recalculate, modify the database, or consume customer simulation quotas. A customer view is constructed from an allowlist of aggregate fields; administrative evidence remains restricted. A failed integrity check returns no result data.
 
-## Core components
+## Simulation scope
 
-| Layer | Responsibility |
+| Domain | Modeled behavior |
 | --- | --- |
-| **Configuration** | Pydantic validation, versioned baseline, parameter provenance, derived scenarios, parameter hashing |
-| **Simulation engine** | Day-by-day player activity, collectible card lifecycle, FP rewards, staking, crafting, purchases, marketplace matching |
-| **Tournament engine** | Scoring, team composition, synthetic or structured sports input, Monte Carlo experiments |
-| **Bot-farm analysis** | Multi-account strategies, costs, realized vs. theoretical asset value, liquidation sensitivity |
-| **Financial engine** | Revenue and expense flows, cash-flow ledger, payout obligations, liquidity gaps, reserve requirements |
-| **Analysis** | Sensitivity experiments, scenario comparisons, rule-based findings, invariant checks |
-| **Application services** | Single orchestration layer, scenario lifecycle, resource preflight, caching and result retrieval |
-| **Persistence** | SQLite scenarios, immutable parameter snapshots, calculation ledger, reproducibility metadata |
-| **Interfaces** | Local Streamlit dashboard, Python CLI, MCP server over stdio or HTTP |
-| **Delivery** | Containerized server deployment, reverse proxy, TLS, authentication, role-based access and rate limits |
+| Players and collectibles | Onboarding, activity, churn, card issuance and expiration |
+| Staking and crafting | Reward issuance and spending, crafting attempts, card transitions |
+| Marketplace | Trades, matching, pricing, commissions, liquidity |
+| Tournaments | Scoring, team outcomes, seeded Monte Carlo experiments |
+| Bot-farm studies | Multi-account costs, realized returns, liquidation sensitivity |
+| Financial model | Revenue, expenses, prizes, cash flow, obligations, operating reserve |
+| Risk analysis | Scenario comparisons, parameter sensitivity, threshold crossings |
 
-## Economic simulation workflow
+The engine distinguishes **customer-defined rules** from **behavioral assumptions**. A technically valid scenario is not a forecast or a guarantee of commercial performance.
 
-```mermaid
-flowchart LR
-    A["Baseline + scenario overrides"] --> B["Validate & hash parameters"]
-    B --> C["Estimate cost / enforce limits"]
-    C --> D["Seeded simulation"]
-    D --> E["Economic & financial reconciliation"]
-    E --> F["Results + reproducibility digest"]
-    F --> G["Immutable snapshot & run ledger"]
-    G --> H["Dashboard / CLI / MCP reporting"]
-```
+## Production-oriented MCP design
 
-The model's daily economic loop considers player onboarding, card expiry, staking rewards, advertising rewards, purchases, crafting, tournament participation, marketplace transactions, withdrawals, and accounting checks. Its inputs distinguish **customer-defined rules** from **unverified behavioral assumptions**. Simulation outputs are conditional scenarios, **not guaranteed financial forecasts**.
+The source project supports authenticated MCP over local stdio and HTTP. Its access gateway enforces tool permissions on each invocation, not only in the advertised tool list. A server-side read-only switch can disable simulation execution independently of the user's role.
 
-## Reproducibility and auditability
+The production architecture uses HTTPS at the edge, internal-only persistence and application services, separate data volumes for incompatible calculation generations, and an explicit rollback path. This case study does **not** disclose infrastructure addresses, credentials, token hashes, or live operational settings.
 
-- A scenario derives from an immutable baseline instead of editing the original configuration.
-- Parameter values carry provenance (source requirements, customer updates, or assumptions).
-- Runs record the engine/configuration version, parameter hash, seed, input-data provenance, and result digest.
-- Immutable configuration snapshots and an append-only run ledger preserve the basis of prior conclusions.
-- Reconciliation checks cover key economic invariants and financial flows.
-- Sensitivity analysis and multiple seeds help expose dependence on uncertain assumptions.
+## Verification and auditability
 
-## MCP and AI-assisted analysis
+Verification combines unit and integration tests, property-based checks, deterministic seeded comparisons, financial reconciliation, role-boundary tests, result-integrity failure tests, and isolated staging/rollback exercises. The source project's reported full test run for the October 2026 release passed **1,316 tests**; this is an internally reported result, not an independent certification or a public CI badge.
 
-The Model Context Protocol (MCP) integration enables AI clients to **inspect** model metadata, discuss parameters, and interpret already computed results through structured tools. Mathematical calculations remain in the Python engine, not in the language model.
+Imported historical runs retain their original engine version and digest. They are not represented as calculations performed by a newer engine. Business approval of assumptions remains distinct from technical verification.
 
-The server architecture includes an authorization gateway, role-based views, input validation, request limits, and an operational read-only mode. Access to detailed reports, exports, scenario modifications, or simulation execution depends on the deployed access policy; **an MCP connection is not equivalent to infrastructure access**.
+## Documentation
 
-## Deployment and security boundaries
-
-```mermaid
-flowchart LR
-    CLIENT["Authenticated MCP client"] -->|HTTPS| PROXY["Reverse proxy / TLS / rate limits"]
-    PROXY --> MCP["MCP application"]
-    subgraph PRIVATE["Private application boundary"]
-        MCP --> SVC["Application service"]
-        SVC --> DB[("SQLite")]
-        SVC --> ENGINE["Isolated simulation worker"]
-    end
-```
-
-The architecture keeps the database, internal APIs, and local dashboard off the public network. Container hardening, least-privilege runtime settings, resource caps, access checks, and audit logging provide defense in depth. The diagram is conceptual and does not expose production network details.
+- [Simulation engine](docs/ENGINE.md)
+- [MCP authorization and approved-results workflow](docs/MCP.md)
+- [Reproducibility and evidence chain](docs/REPRODUCIBILITY.md)
+- [Engineering case study (PDF; illustrative synthetic charts)](docs/FIGHTEX_Architecture_Case_Study_EN.pdf)
+- [Synthetic chart generator](tools/pdf-demo/)
 
 ## Technology
 
-**Python 3.12+**, NumPy, SciPy, Pandas, Pydantic, PyYAML, SQLite, pytest, Hypothesis, Streamlit, and the Python MCP SDK. Docker Compose and Nginx support the server deployment.
+Python 3.12+, NumPy, SciPy, Pandas, Pydantic, PyYAML, SQLite, pytest, Hypothesis, Streamlit, Python MCP SDK, Docker Compose, and Nginx.
 
-## Architectural principles
+## Boundaries
 
-1. **One engine, multiple interfaces:** avoid divergent business formulas across CLI, dashboard, and MCP.
-2. **Evidence-first reporting:** distinguish computed measurements from assumptions and narrative interpretation.
-3. **Deterministic experiments:** fixed inputs and seeds support reproducible comparisons.
-4. **Immutable audit evidence:** preserve the exact parameters and software context used for each result.
-5. **Default-deny access:** expose only the tools and data authorized for each role.
-6. **Resource-aware execution:** validate and estimate workload before running expensive experiments.
-7. **Separation of concerns:** keep simulation, persistence, transport, and presentation independent.
-
-## Repository scope
-
-This repository documents the **architecture and engineering approach**, not the full proprietary implementation or the customer's financial audit. It is suitable as a technical portfolio reference for simulation platforms, tokenomics modeling, game-economy design, and MCP-based analytics.
-
-**Status:** architecture overview based on the FIGHTEX source project; this document is not an independent security certification or a guarantee of economic performance.
+This repository intentionally excludes implementation source code, full parameter sets, proprietary financial results, customer data, audit files, security-sensitive deployment details, and production secrets. Its diagrams are conceptual. Internal tests do not constitute a security certification; scenario outputs do not constitute investment advice or guaranteed returns.
