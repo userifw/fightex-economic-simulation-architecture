@@ -1,68 +1,54 @@
 # Simulation Engine Architecture
 
-The FIGHTEX engine is a Python-based, seeded economic simulator for a fantasy MMA/UFC-style game. This page describes the architecture, **not the proprietary implementation or customer-specific model coefficients**.
+FIGHTEX uses a Python-based seeded economic simulator for a digital collectible game. This is an architectural description, **not** the proprietary implementation or a release of customer model coefficients.
 
 ## Separation of concerns
 
-The source project separates validated configuration, simulation, application services, storage, and presentation. The calculation path is shared by the local dashboard, CLI, and MCP interface:
-
 ```mermaid
 flowchart TD
-  CONFIG["Validated configuration / scenario"] --> SERVICE["SimulatorService"]
-  CLI["CLI"] --> SERVICE
+  CLI["CLI"] --> SERVICE["SimulatorService"]
   DASH["Streamlit controller"] --> SERVICE
-  MCP["MCP gateway"] --> SERVICE
-  SERVICE --> LIMITS["Resource preflight"]
-  SERVICE --> RUNNER["Simulation runner"]
-  RUNNER --> ECON["Daily economy"]
-  RUNNER --> SPORTS["Tournament / sports"]
-  RUNNER --> FARM["Bot-farm analysis"]
-  ECON --> FIN["Finance & reconciliation"]
-  RUNNER --> RESULT["Structured result + digest"]
-  RESULT --> SERVICE
+  MCP["Authorized MCP execution"] --> SERVICE
+  SERVICE --> CFG["Validated scenario + provenance"]
+  CFG --> LIMITS["Resource preflight"]
+  LIMITS --> RUN["Seeded simulation runner"]
+  RUN --> ECON["Player / card economy"]
+  RUN --> SPORT["Tournament / Monte Carlo"]
+  RUN --> FARM["Bot-farm studies"]
+  ECON --> FIN["Financial ledger + reserves"]
+  RUN --> CHECKS["Reconciliation and invariants"]
+  CHECKS --> STORE["Immutable snapshots + run digest"]
 ```
 
-The engine does not depend on the MCP transport, dashboard, or persistence layer. The simulation runner returns structured results with summary metrics, tables, warnings, and reconciliation checks.
+The engine is independent of presentation and MCP transport. The read-only approved-results MCP tool is a **separate path** and does not invoke this runner; see [MCP integration](MCP.md).
 
-## Model components
+## Simulation components
 
-| Component | Role |
+| Component | Responsibility |
 | --- | --- |
-| Configuration | Pydantic validation, baseline loading, parameter provenance and scenario overrides |
-| Daily population model | Player arrivals, activity, purchases, balances, staking, crafting, card expiry, trading and withdrawals |
-| Card lifecycle | Per-card expiry and destruction, including the effects on inventory and staking slots |
-| Staking and FP | Reward accrual and accounting of FP issuance and spending |
-| Marketplace | Supply/demand matching, prices, commissions, and prevention of self-matches |
-| Tournament | Fighter scoring, team results and Monte Carlo evaluation |
-| Bot-farm model | Multi-account strategies, costs, liquidation and ROI measurements |
-| Finance | Revenue, expenses, cash-flow accounting, reserves and capital requirements |
-| Sensitivity | Parameter perturbations, scenario comparisons and outcome thresholds |
-| Reconciliation | Cross-checks for monetary flows, cards, rewards and other invariants |
+| Configuration | Validation, versioned baseline, parameter provenance and scenario overrides |
+| Population | Player onboarding, activity, churn, purchases and balances |
+| Collectibles | Card issuance, per-card expiry, staking-slot effects and crafting |
+| Rewards | Staking and advertising rewards, issuance/spending reconciliation |
+| Marketplace | Matching, pricing, fees, liquidity and self-trade prevention |
+| Tournaments | Fighter scoring, team outcomes and seeded Monte Carlo experiments |
+| Bot-farm studies | Multi-account strategies, realized return and liquidation analysis |
+| Finance | Revenue, prizes, operating expense, marketing, cash flow, obligations and reserves |
+| Risk | Sensitivity analysis, scenario comparison and threshold crossing |
+| Verification | Economic conservation checks, accounting invariants and reproducible digests |
 
-## Daily simulation lifecycle
+## Daily lifecycle
 
-The source model advances in daily steps. Its workflow includes onboarding, expiry, churn, staking rewards, promotions, advertising, paid and FP card packs, crafting, tournament entry, staking-slot assignment, marketplace trading, tournament rewards, withdrawals, anti-bot effects, and accounting checks.
+The source model advances in daily steps and processes onboarding, expiry, activity and churn, rewards, purchases, crafting, tournament eligibility, marketplace transactions, withdrawals, and accounting checks. Ordering matters; for example, expiry must be handled consistently before dependent operations. Exact behavioral probabilities and proprietary customer rules are not published.
 
-This order matters: for example, expiry is processed before the day's other operations. This overview intentionally does not publish the full customer-specific rules or behavioral probabilities.
+## Calculation and reporting
 
-## Calculation modes
+Supported studies include economy, tournament, bot-farm, finance, combined runs, sensitivity analysis, and repeated seeded experiments. Results carry a calculation context and warnings. Financial values are computed by Python, **not by an AI language model**.
 
-- **economy** — simulated player/card economy and its financial consequences.
-- **tournament** — tournament and leaderboard Monte Carlo experiments.
-- **botfarm** — multi-account strategy and liquidation analysis.
-- **finance** — financial scenarios and capital requirements.
-- **full** — combined economy, tournament and bot-farm analysis.
-
-The source also supports one-factor sensitivity analysis and multiple seeded replications for selected studies.
-
-## Outputs and evidence
-
-Each result can carry the engine/configuration version, parameter hash, random seed, source of sports data, timestamp, immutable configuration snapshot, and digest. Financial figures are generated by Python, **not by the AI assistant**.
-
-The model distinguishes rules supplied by the customer from assumptions used for scenario analysis. Results are conditional on those assumptions and should not be interpreted as guaranteed business outcomes.
+Historical imported runs retain their original engine metadata; importing evidence into a new runtime does not constitute recalculation. Scenario assumptions are not market observations and results are not guaranteed forecasts.
 
 ## Technology
 
-Python 3.12+, NumPy, SciPy, Pandas, Pydantic, and pytest/Hypothesis. The public documentation omits proprietary source files, actual customer parameter tables and confidential audit results.
+Python 3.12+, NumPy, SciPy, Pandas, Pydantic, pytest and Hypothesis. See [reproducibility](REPRODUCIBILITY.md) for the evidence model.
 
-[← Architecture overview](../README.md) · [Reproducibility](REPRODUCIBILITY.md)
+[← Overview](../README.md) · [MCP](MCP.md)
