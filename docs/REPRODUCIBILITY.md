@@ -1,61 +1,43 @@
-# Reproducibility and Audit Evidence
+# Reproducibility, Audit Imports, and Integrity
 
-A core FIGHTEX architectural requirement is that a calculation can be traced to the exact inputs, software context and output used to produce an audit finding.
+FIGHTEX separates **calculation reproducibility**, **saved-evidence integrity**, and **customer acceptance of assumptions**.
 
-## Evidence chain
+## Calculation evidence chain
 
 ```mermaid
-flowchart TD
-  A["Versioned baseline"] --> B["Validated scenario overrides"]
-  B --> C["Canonical parameter hash"]
-  C --> D["Seeded simulation + input provenance"]
-  D --> E["Result tables, checks and digest"]
-  E --> F["Immutable configuration snapshot"]
-  E --> G["Append-only run ledger"]
-  F --> H["Audit manifest and report"]
-  G --> H
+flowchart LR
+  BASE["Versioned baseline"] --> CONFIG["Validated overrides"]
+  CONFIG --> HASH["Effective parameter hash"]
+  HASH --> RUN["Seeded engine run"]
+  RUN --> CHECK["Financial and economic invariants"]
+  CHECK --> SNAP["Immutable snapshot + run ledger"]
+  SNAP --> DIGEST["Result digest + audit package"]
 ```
 
-## Reproducibility metadata
+A saved run is associated with an engine version, configuration version, effective parameter hash, seed, input provenance, result digest, and a recorded execution. These identifiers allow comparisons without treating a newer engine as the author of older results.
 
-The source architecture records or associates:
+## Approved-results integrity chain
 
-| Evidence | Purpose |
-| --- | --- |
-| Configuration version | Identifies the parameter schema and baseline generation |
-| Engine version | Identifies the calculation implementation |
-| Parameter hash | Identifies the effective parameter set |
-| Random seed | Supports repeatable stochastic runs |
-| Sports-data provenance | Distinguishes synthetic inputs from structured external data |
-| Scenario / run ID | Identifies a particular saved experiment |
-| Immutable parameter snapshot | Preserves effective parameter values and their sources |
-| Result digest | Supports comparison of calculation outputs |
-| Run ledger | Preserves a historical record of executions |
-| Audit manifest and checksums | Supports integrity checks of the published evidence bundle |
+```mermaid
+flowchart LR
+  APPROVED[("Saved approved result files")] --> CHECK["Per-file SHA-256 validation"]
+  MANIFEST["Manifest with pinned application-code digest"] --> CHECK
+  CHECK -->|Valid| VIEW["Role-scoped MCP response"]
+  CHECK -->|Mismatch or missing| FAIL["No result data"]
+```
 
-## Invariants and reconciliation
+The read-only result reader does not rerun the simulation or mutate persistence. Replacing an approved result set requires a deliberate manifest/code update and separate approval; merely replacing both a result file and its manifest is insufficient.
 
-The engine checks economic conservation properties and accounting relationships. These include the consistency of FP issuance/spending, card issuance/destruction, marketplace commissions, tournament payouts, cash flows and reserve requirements.
+## Reconciliation and uncertainty
 
-Such checks detect classes of implementation errors; they **do not prove that every behavioral assumption is correct**.
+Economic invariants cover accounting consistency, reward issuance/spending, card lifecycle, marketplace flows, prize payouts, cash flow, and reserve obligations. Multiple seeds and one-factor sensitivity studies reveal variation under the **chosen assumptions**; they do not validate the real-world conversion, churn, or purchasing behavior of players.
 
-## Sensitivity and uncertainty
+## Historical import and rollback
 
-A single seeded run is one modeled realization. The source architecture supports comparisons across seeds and parameter perturbations, with results labeled according to their statistical basis.
+Historical audit evidence can be imported into a new isolated volume without recalculation. The imported run retains its original engine version and digest. The previous runtime and volume can be preserved as a rollback target, subject to environment-specific backup verification.
 
-- **Single seed:** one deterministic realization for a given set of inputs.
-- **Multiple seeds:** descriptive variation or aggregates across repeated experiments.
-- **One-factor sensitivity:** isolates the effect of changing a parameter while holding the comparison setup fixed.
-- **Monte Carlo:** characterizes selected stochastic mechanisms, not necessarily uncertainty across the entire business model.
+## Public disclosure boundary
 
-Financial claims should identify their horizon, scenario, aggregation method, and assumptions.
+This document describes evidence mechanisms, not customer evidence. It intentionally excludes raw audit files, customer financial tables, actual manifests, run identifiers, parameter hashes, and production storage paths. Internal test results are not an independent audit certification.
 
-## Audit integrity versus business acceptance
-
-An audit package may be technically reproducible and internally consistent while its economic assumptions still require customer confirmation. Technical readiness and business acceptance are separate decisions.
-
-## Public documentation policy
-
-This repository does not publish proprietary run snapshots, audit manifests, exact customer financial tables, or source datasets. It documents **how evidence is produced and preserved**, not the confidential evidence itself.
-
-[← Architecture overview](../README.md) · [MCP integration](MCP.md)
+[← Overview](../README.md) · [MCP](MCP.md)
