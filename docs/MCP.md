@@ -1,67 +1,56 @@
-# MCP Integration Architecture
+# MCP Integration and Approved-Results Access
 
-FIGHTEX exposes structured model information through the **Model Context Protocol (MCP)**. AI clients can use this interface to ask questions about model assumptions and already computed results. The Python engine, rather than the language model, performs economic calculations.
+FIGHTEX exposes structured simulation metadata and saved results through the **Model Context Protocol (MCP)**. The language model interprets evidence; the Python engine performs calculations.
 
-## Integration boundaries
+## Two distinct execution paths
 
 ```mermaid
-sequenceDiagram
-  participant AI as AI client
-  participant MCP as MCP server
-  participant GW as Access gateway
-  participant SVC as SimulatorService
-  participant DB as Data store
-  AI->>MCP: Tool request
-  MCP->>GW: Authenticate and authorize
-  GW->>SVC: Allowed read operation
-  SVC->>DB: Retrieve authorized metadata/result
-  DB-->>SVC: Structured data
-  SVC-->>GW: Response
-  GW-->>MCP: Role-appropriate view
-  MCP-->>AI: Structured evidence
+flowchart TD
+  AI["Authenticated AI client"] --> AUTH["Server-side identity and authorization"]
+  AUTH --> ROUTE{"Permitted operation?"}
+  ROUTE -->|Saved approved results| VERIFY["Verify pinned manifest and file checksums"]
+  FILES[("Read-only results")] --> VERIFY
+  VERIFY --> VIEW["Admin full evidence / Customer allowlisted aggregates"]
+  VIEW --> AI
+  ROUTE -->|Simulation, only when enabled| LIMITS["Resource preflight + quotas"]
+  LIMITS --> ENGINE["Python simulation engine"]
+  ENGINE --> STORE[("Run ledger and immutable snapshots")]
+  STORE --> AI
+  ROUTE -->|Denied| DENY["Access denied / execution disabled"]
 ```
 
-## Interface design
+Approved-results retrieval is **not** a simulation request. It does not call the calculation engine, modify the run ledger or database, or decrement customer calculation quotas. File integrity is verified on each read using a manifest whose digest is pinned in application code. Tampered or missing evidence fails closed.
 
-The source project uses the official Python MCP SDK and supports local stdio as well as an authenticated HTTP deployment. Its tools cover:
+## Authorization boundaries
 
-- Model overview, parameter values, provenance and uncertainty information.
-- Scenario discovery and existing run/result retrieval.
-- Audit metadata, report discovery and chunked report reading.
-- Where explicitly authorized and enabled, scenario and calculation operations.
+- Identity and roles are derived from authenticated server context, never client-supplied arguments.
+- Tool visibility and invocation authorization are both enforced.
+- Customer responses are assembled from an explicit allowlist of aggregates and caveats; internal parameter sets, hashes, run identifiers, file paths, and checksums are withheld.
+- Administrative evidence is subject to administrator authorization.
+- Requests for restricted parameter inclusion are rejected, rather than silently exposing additional fields.
+- Read-only mode disables new calculations regardless of role.
 
-Tool availability is **policy-dependent**. The production read-only setting can disable new calculations regardless of role; a customer demo policy can restrict detailed reports and results. Public documentation does not imply that all tools are enabled for every user.
-
-## Security model
-
-1. **Server-derived identity:** role and permissions come from authenticated server-side context, not user-supplied tool arguments.
-2. **Default deny:** each tool invocation is authorized by the access gateway, independently of whether it appears in a tool listing.
-3. **Data minimization:** customer previews are constructed from explicitly allowed data, rather than sending full audit results to an AI model and asking it to redact them.
-4. **Input validation:** parameter paths, report names, identifiers and result selections are validated.
-5. **Execution control:** a server-side read-only mode prevents new calculations through MCP.
-6. **Resource boundaries:** resource estimation, limits and rate controls protect the compute service.
-7. **Infrastructure isolation:** persistence and internal services are not publicly exposed.
-
-## Deployment concept
+## Deployment and version isolation
 
 ```mermaid
 flowchart LR
-  USER["AI / MCP client"] -->|HTTPS| EDGE["Nginx: TLS + request limits"]
-  EDGE --> AUTH["MCP auth / OAuth"]
-  AUTH --> GATE["Access gateway"]
-  subgraph INTERNAL["Private application network"]
-    GATE --> APP["Application service"]
-    APP --> DATA[("SQLite")]
-    APP --> WORKER["Compute worker (when enabled)"]
+  CLIENT["MCP client"] -->|HTTPS| EDGE["TLS reverse proxy"]
+  EDGE --> APP["Authenticated MCP service"]
+  subgraph PRIVATE["Private runtime"]
+    APP --> ACTIVE[("Version-isolated audit volume")]
+    APP --> APPROVED[("Read-only approved results")]
+    APP -. "When explicitly enabled" .-> WORKER["Resource-limited compute worker"]
   end
 ```
 
-The deployment may use OAuth or role-specific bearer credentials. The actual credential issuance, server addresses, secret hashes and infrastructure configuration are intentionally not documented here.
+A new calculation-engine generation can use a separate data volume, importing an accepted historical audit **without recalculating it**. Imported runs retain their original engine metadata and digests. Switching versions requires a backup, validation, and a rollback path. This document intentionally omits operational addresses, secrets, and executable production deployment commands.
 
-## Trust and interpretation
+## Verification strategy
 
-The AI client can explain a returned financial metric, identify which assumptions are documented versus estimated, and discuss hypothetical changes. It must not present an uncomputed hypothetical as an engine result. A stored run's metadata and snapshot establish what was actually calculated.
+Role access, negative authorization cases, integrity tampering, disabled execution, database immutability, and rollback are tested separately. The source project's October 2026 release reported successful isolated Docker staging and full pytest; production OAuth login and host-specific reverse-proxy configuration require their own environment-specific checks.
 
-This document describes the **architecture and trust boundaries**, not a public API specification or authorization to run simulations.
+## Interpretation limits
 
-[← Architecture overview](../README.md) · [Engine](ENGINE.md)
+An AI assistant may explain returned values and stated assumptions but must not invent an uncomputed scenario or portray conditional outputs as forecasts. Business acceptance of financial reserve policy is separate from technical integrity.
+
+[← Overview](../README.md) · [Evidence chain](REPRODUCIBILITY.md)
